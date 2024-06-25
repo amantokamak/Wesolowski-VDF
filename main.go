@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"math/big"
@@ -60,29 +59,28 @@ func TrapdoorSK(x *big.Int, t int64, sk *big.Int) (*big.Int, *big.Int, time.Dura
 }
 
 // HPrime hash function for l that ensures the output is a prime number
-// HPrime hash function for l that ensures the output is a prime number
 func HPrime(g, y *big.Int) *big.Int {
-	hash := sha256.New()
-	hash.Write(g.Bytes())
-	hash.Write(y.Bytes())
-	candidate := new(big.Int).SetBytes(hash.Sum(nil))
+    hash := sha256.New()
+    hash.Write(g.Bytes())
+    hash.Write(y.Bytes())
+    candidate := new(big.Int).SetBytes(hash.Sum(nil))
 
-	// Use a random seed for more entropy
-	seed := make([]byte, 32)
-	_, err := rand.Read(seed)
-	if err != nil {
-		panic(err)
-	}
+    // Ensure the candidate is a prime number
+    iteration := 0
+    if candidate.Bit(0) == 0 { // If candidate is even, make it odd
+        candidate.Add(candidate, big.NewInt(1))
+    }
 
-	randomIncrement := new(big.Int).SetBytes(seed)
-
-	// Ensure the candidate is a prime number
-	for !candidate.ProbablyPrime(20) { // 20 is the number of iterations for the Miller-Rabin test
-		candidate.Add(candidate, randomIncrement) // Increment candidate with a random value until we find a prime
-		randomIncrement.Add(randomIncrement, big.NewInt(1)) // Ensure randomIncrement changes on every iteration
-	}
-	fmt.Println("candidate:", candidate)
-	return candidate
+    for !candidate.ProbablyPrime(20) {
+        candidate.Add(candidate, big.NewInt(2)) // Increment by 2 to stay odd and find next prime
+        iteration++
+        if iteration > 100000 { // Add a safety check to prevent infinite loop
+            fmt.Println("Failed to find a prime number after 100000 iterations")
+            break
+        }
+    }
+    fmt.Printf("Prime candidate after %d iterations: %s\n", iteration, candidate.String())
+    return candidate
 }
 
 // Verify function
@@ -196,7 +194,7 @@ func main() {
 		return
 	}
 
-	// values for other parameters
+	// Example values for other parameters
 	g := int64(2)
 	primeL := int64(101)
 	kappa := int64(2)
